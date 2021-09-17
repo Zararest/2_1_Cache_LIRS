@@ -1,4 +1,10 @@
 #include "cache.inl"
+#include "perfect_cache.inl"
+#include <random> 
+
+#define CASH_SIZE 300
+#define DATA_RANGE 2000
+#define NUM_OF_ITER 1000000
 
 Cache_elem get_page(Key_T cur_key){
 
@@ -7,27 +13,31 @@ Cache_elem get_page(Key_T cur_key){
     return tmp;
 }
 
+page get_only_page(Key_T cur_key){
+
+    return cur_key;
+}
+
 int main(){
 
-    LIRS_cache new_cache(16);
+    std::mt19937 mersenne(static_cast<unsigned int>(time(0)));
 
-    /*Cache_elem tmp_1(1, elem_with_data); 
-    Cache_elem tmp_2(2, elem_with_data); 
-    Cache_elem tmp_3(3, elem_with_data); 
-    Cache_elem tmp_4(4, elem_with_data); 
-
-    std::list<Cache_elem> fir_list = {tmp_1, tmp_2};
-    std::list<Cache_elem> sec_list = {tmp_3, tmp_4};
-
-    std::list<int> fir_list = {1, 2};
-    std::list<int> sec_list = {3, 4};
-
-    fir_list.splice(fir_list.begin(), sec_list, --sec_list.end());*/
-
-    for (int i = 0; i < 20; i++){
-
-        new_cache.update(i, get_page);
-    }
+    LIRS_cache new_cache(CASH_SIZE);
     
+    std::vector<Key_T> keys_vector;
+    int counter = 0, cur_number = 0, perfect_counetr = 0;
+
+    for (int i = 0; i < NUM_OF_ITER; i++){
+
+        cur_number = mersenne();
+
+        keys_vector.push_back(cur_number % DATA_RANGE);
+        counter += new_cache.update(cur_number % DATA_RANGE, get_page);
+    }
+
+    Perfect_cache new_perfect_cache(keys_vector, CASH_SIZE);
+
+    printf("number of hits: %i\n", counter);
+    printf("number of perfect hits: %i\n", new_perfect_cache.get_hit_count(get_only_page));
     return 0;
 }

@@ -79,9 +79,9 @@ private:
     std::list<Cache_elem> LIR_stack;
     std::list<Cache_elem> HIR_list;
 
-    using List_itter = typename std::list<Cache_elem>::iterator;
-    std::unordered_map<Key_T, List_itter> LIR_hash_t; //надо хранить итераторы в хэш таблице 
-    std::unordered_map<Key_T, List_itter> HIR_hash_t;
+    using List_iter = typename std::list<Cache_elem>::iterator;
+    std::unordered_map<Key_T, List_iter> LIR_hash_t; //надо хранить итераторы в хэш таблице 
+    std::unordered_map<Key_T, List_iter> HIR_hash_t;
 
 public:
 
