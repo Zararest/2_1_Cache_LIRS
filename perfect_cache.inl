@@ -7,52 +7,53 @@
 #include <unordered_map>
 #include <vector>
 
-typedef int Key_T;
-typedef long page;
-
+template <typename T_data, typename T_key>
 class Perfect_cache_elem;
+
+template <typename T_data, typename T_key>
 class Perfect_cache;
 
-class Perfect_cache_elem{
+
+template <typename T_data, typename T_key> class Perfect_cache_elem{
 
 private:
 
     int number_in_all_data;
 
-    page data;
+    T_data data;
 
     int dist_to_next_elem;
 
 public:
 
-    Perfect_cache_elem(page elem_data, Key_T elem_key, int cur_distance);    
+    Perfect_cache_elem(T_data elem_data, int number_of_elem, int distance);    
 
     ~Perfect_cache_elem(){}
 
     void decrease_dist();
 
-    friend bool operator ==(const Perfect_cache_elem& left_elem, const Perfect_cache_elem& right_elem);
-    friend bool operator <(const Perfect_cache_elem& elem, const Perfect_cache_elem& right_elem);
-    friend class Perfect_cache;
+    friend bool operator ==(const Perfect_cache_elem<T_data, T_key>& left_elem, const Perfect_cache_elem<T_data, T_key>& right_elem){
+
+        return left_elem.number_in_all_data == right_elem.number_in_all_data;
+    }
+
+    friend bool operator <(const Perfect_cache_elem<T_data, T_key>& left_elem, const Perfect_cache_elem<T_data, T_key>& right_elem){
+
+        return left_elem.dist_to_next_elem < right_elem.dist_to_next_elem;
+    }
+
+    friend class Perfect_cache<T_data, T_key>;
 };
 
-bool operator ==(const Perfect_cache_elem& left_elem, const Perfect_cache_elem& right_elem){
-
-    return left_elem.number_in_all_data == right_elem.number_in_all_data;
-}
-
-bool operator <(const Perfect_cache_elem& left_elem, const Perfect_cache_elem& right_elem){
-
-    return left_elem.dist_to_next_elem < right_elem.dist_to_next_elem;
-}
-
-Perfect_cache_elem::Perfect_cache_elem(page elem_data, int number_of_elem, int distance): data(elem_data){
+template <typename T_data, typename T_key>
+Perfect_cache_elem<T_data, T_key>::Perfect_cache_elem(T_data elem_data, int number_of_elem, int distance): data(elem_data){
 
     number_in_all_data = number_of_elem;
     dist_to_next_elem = distance;
 }
 
-void Perfect_cache_elem::decrease_dist(){
+template <typename T_data, typename T_key>
+void Perfect_cache_elem<T_data, T_key>::decrease_dist(){
 
     dist_to_next_elem--;
 
@@ -60,42 +61,44 @@ void Perfect_cache_elem::decrease_dist(){
 }
 
 
-class Perfect_cache{
+template <typename T_data, typename T_key> class Perfect_cache{
 
 private: 
 
     int size;
 
-    const std::vector<Key_T>& all_data;
+    const std::vector<T_key>& all_data;
 
-    std::list<Perfect_cache_elem> cache_list;
+    std::list<Perfect_cache_elem<T_data, T_key>> cache_list;
 
-    using List_iter = typename std::list<Perfect_cache_elem>::iterator;
-    std::unordered_map<Key_T, List_iter> cache_hash_t;
+    using List_iter = typename std::list<Perfect_cache_elem<T_data, T_key>>::iterator;
+    std::unordered_map<T_key, List_iter> cache_hash_t;
 
 public:
 
-    Perfect_cache(const std::vector<Key_T>& new_data, int new_size);
+    Perfect_cache(const std::vector<T_key>& new_data, int new_size);
 
     ~Perfect_cache(){}
 
     int check_distance(int elem_number);
 
-    void add_list_elem(page cur_page, int cur_page_number, int cur_dist);
+    void add_list_elem(T_data cur_page, int cur_page_number, int cur_dist);
 
-    bool update(int page_number, page (*get_page)(Key_T));
+    bool update(int page_number, T_data (*get_page)(T_key));
 
-    int get_hit_count(page (*get_page)(Key_T));
+    int get_hit_count(T_data (*get_page)(T_key));
 
     void decrease_all_dist();
 };
 
-Perfect_cache::Perfect_cache(const std::vector<Key_T>& new_data, int new_size): all_data(new_data){
+template <typename T_data, typename T_key>
+Perfect_cache<T_data, T_key>::Perfect_cache(const std::vector<T_key>& new_data, int new_size): all_data(new_data){
 
     size = new_size;
 }
 
-int Perfect_cache::get_hit_count(page (*get_page)(Key_T)){
+template <typename T_data, typename T_key>
+int Perfect_cache<T_data, T_key>::get_hit_count(T_data (*get_page)(T_key)){
 
     int hit_counter = 0;
 
@@ -107,9 +110,10 @@ int Perfect_cache::get_hit_count(page (*get_page)(Key_T)){
     return hit_counter;
 }
 
-int Perfect_cache::check_distance(int elem_number){
+template <typename T_data, typename T_key>
+int Perfect_cache<T_data, T_key>::check_distance(int elem_number){
 
-    Key_T cur_key = all_data[elem_number];
+    T_key cur_key = all_data[elem_number];
     int counter = 1;
     
     while ((cur_key != all_data[elem_number + counter]) && (elem_number + counter < all_data.size())){
@@ -120,9 +124,10 @@ int Perfect_cache::check_distance(int elem_number){
     return counter;
 }
 
-void Perfect_cache::add_list_elem(page cur_elem_data, int cur_page_number, int cur_dist){//надо переделать get_page тк она должна возвращать только страницу
+template <typename T_data, typename T_key>
+void Perfect_cache<T_data, T_key>::add_list_elem(T_data cur_elem_data, int cur_page_number, int cur_dist){//надо переделать get_page тк она должна возвращать только страницу
 
-    Perfect_cache_elem new_elem(cur_elem_data, cur_page_number, cur_dist);
+    Perfect_cache_elem<T_data, T_key> new_elem(cur_elem_data, cur_page_number, cur_dist);
     cache_list.push_back(new_elem);
 
     cache_hash_t[all_data[cur_page_number]] = --cache_list.end();
@@ -132,9 +137,10 @@ void Perfect_cache::add_list_elem(page cur_elem_data, int cur_page_number, int c
     decrease_all_dist();
 }   
 
-void Perfect_cache::decrease_all_dist(){
+template <typename T_data, typename T_key>
+void Perfect_cache<T_data, T_key>::decrease_all_dist(){
 
-    typename std::list<Perfect_cache_elem>::iterator list_itter = cache_list.begin();
+    typename std::list<Perfect_cache_elem<T_data, T_key>>::iterator list_itter = cache_list.begin();
     int i = 0;
     while (list_itter != cache_list.end()){
 
@@ -144,7 +150,8 @@ void Perfect_cache::decrease_all_dist(){
     }
 }
 
-bool Perfect_cache::update(int page_number, page (*get_page)(Key_T)){
+template <typename T_data, typename T_key>
+bool Perfect_cache<T_data, T_key>::update(int page_number, T_data (*get_page)(T_key)){
 
     auto cur_iter =  cache_hash_t.find(all_data[page_number]);
 
@@ -154,7 +161,7 @@ bool Perfect_cache::update(int page_number, page (*get_page)(Key_T)){
 
             if (check_distance(page_number) < cache_list.front().dist_to_next_elem ){ //сравниваем с самым далеким элементом(тут надо с -1 подумать)
 
-                Key_T list_back_key = all_data[cache_list.front().number_in_all_data];
+                T_key list_back_key = all_data[cache_list.front().number_in_all_data];
                 cache_hash_t.erase(list_back_key);
                 cache_list.pop_front();
                 

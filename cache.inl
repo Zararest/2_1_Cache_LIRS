@@ -5,12 +5,15 @@
 #include <list>
 #include <unordered_map>
 
+template <typename T_data, typename T_key>
 class Cache_elem;
+
+template <typename T_data, typename T_key>
 class My_cache_hash;
+
+template <typename T_data, typename T_key>
 class LIRS_cache;
 
-typedef int Key_T;
-typedef long page;
 
 enum elem_types{
 
@@ -19,69 +22,70 @@ enum elem_types{
     elem_with_data = 3
 };
 
-class Cache_elem{
+template <typename T_data, typename T_key> class Cache_elem{
 
 private:
 
-    Key_T data_key;
+    T_key data_key;
 
-    page data;
+    T_data data;
 
     int type;
 
 public:
 
-    Cache_elem(page elem_data, Key_T elem_key, int elem_type);
+    Cache_elem(T_data elem_data, T_key elem_key, int elem_type);
 
-    Cache_elem(Key_T elem_key, int elem_type); //с данными в другом месте (HIR)
+    Cache_elem(T_key elem_key, int elem_type); //с данными в другом месте (HIR)
 
     ~Cache_elem(){};
 
     void change_type(int new_type);
 
-    friend bool operator ==(const Cache_elem& left_elem, const Cache_elem& right_elem);
-    friend class LIRS_cache;
+    friend bool operator ==(const Cache_elem<T_data, T_key>& left_elem, const Cache_elem<T_data, T_key>& right_elem){
+
+        return left_elem.data_key == right_elem.data_key;
+    }
+
+    friend class LIRS_cache<T_data, T_key>;
 };
 
-Cache_elem::Cache_elem(page elem_data, Key_T elem_key, int elem_type): data(elem_data), data_key(elem_key){
+template <typename T_data, typename T_key>
+Cache_elem<T_data ,T_key>::Cache_elem(T_data elem_data, T_key elem_key, int elem_type): data(elem_data), data_key(elem_key){
 
     type = elem_type;
 }
 
-Cache_elem::Cache_elem(Key_T elem_key, int elem_type): data_key(elem_key){
+template <typename T_data, typename T_key>
+Cache_elem<T_data, T_key>::Cache_elem(T_key elem_key, int elem_type): data_key(elem_key){
 
     type = elem_type;
 }
 
-void Cache_elem::change_type(int new_type){
+template <typename T_data, typename T_key>
+void Cache_elem<T_data, T_key>::change_type(int new_type){
 
     type = new_type;
 
     if ((new_type == HRI_resident) || (new_type == HRI_non_resident)){
 
-        data.~page(); //вызываем деструктор для данных которые хранятся в HIR и есть информация в LIR
+        //data.~page(); //вызываем деструктор для данных которые хранятся в HIR и есть информация в LIR
     }                 //эта функция вызывается для резидентов/не_резидентов HIR в стеке LIR    
 }
 
-bool operator ==(const Cache_elem& left_elem, const Cache_elem& right_elem){
-
-    return left_elem.data_key == right_elem.data_key;
-}
-
-
-class LIRS_cache{
+template <typename T_data, typename T_key> class LIRS_cache{
 
 private:
 
     int LIR_size;
     int HIR_size;
 
-    std::list<Cache_elem> LIR_stack;
-    std::list<Cache_elem> HIR_list;
+    std::list<Cache_elem<T_data, T_key>> LIR_stack;
+    std::list<Cache_elem<T_data, T_key>> HIR_list;
 
-    using List_iter = typename std::list<Cache_elem>::iterator;
-    std::unordered_map<Key_T, List_iter> LIR_hash_t; //надо хранить итераторы в хэш таблице 
-    std::unordered_map<Key_T, List_iter> HIR_hash_t;
+    using List_iter = typename std::list<Cache_elem<T_data, T_key>>::iterator;
+    std::unordered_map<T_key, List_iter> LIR_hash_t; //надо хранить итераторы в хэш таблице 
+    std::unordered_map<T_key, List_iter> HIR_hash_t;
 
 public:
 
@@ -89,13 +93,13 @@ public:
 
     ~LIRS_cache(){};
 
-    bool update(Key_T cur_key, Cache_elem (*get_page)(Key_T));
+    bool update(T_key cur_key, T_data(*get_page)(T_key));
 
-    void handle_non_resident(Key_T cur_key, Cache_elem (*get_page)(Key_T));
+    void handle_non_resident(T_key cur_key, T_data(*get_page)(T_key));
 
-    void handle_resident(Key_T cur_key);
+    void handle_resident(T_key cur_key);
 
-    void handle_double_hit(Key_T cur_key);
+    void handle_double_hit(T_key cur_key);
 
     void move_from_LIR_to_HIR();
 
@@ -104,13 +108,15 @@ public:
     void check_HIR_bottom();
 };
 
-LIRS_cache::LIRS_cache(int size){
+template <typename T_data, typename T_key>
+LIRS_cache<T_data, T_key>::LIRS_cache(int size){
 
     HIR_size = size / 4;
     LIR_size = size - HIR_size;
 }
 
-bool LIRS_cache::check_LIR_bottom(){
+template <typename T_data, typename T_key>
+bool LIRS_cache<T_data, T_key>::check_LIR_bottom(){
 
     if (LIR_stack.back().type == elem_with_data){
 
@@ -126,7 +132,8 @@ bool LIRS_cache::check_LIR_bottom(){
     return false;
 }
 
-void LIRS_cache::check_HIR_bottom(){
+template <typename T_data, typename T_key>
+void LIRS_cache<T_data, T_key>::check_HIR_bottom(){
 
     auto find_in_LIR = LIR_hash_t.find(HIR_list.back().data_key);
 
@@ -136,7 +143,8 @@ void LIRS_cache::check_HIR_bottom(){
     }
 }
 
-void LIRS_cache::move_from_LIR_to_HIR(){
+template <typename T_data, typename T_key>
+void LIRS_cache<T_data, T_key>::move_from_LIR_to_HIR(){
 
     check_HIR_bottom();
 
@@ -151,15 +159,18 @@ void LIRS_cache::move_from_LIR_to_HIR(){
     check_LIR_bottom();
 }
 
-void LIRS_cache::handle_non_resident(Key_T cur_key, Cache_elem (*get_page)(Key_T)){
+template <typename T_data, typename T_key> 
+void LIRS_cache<T_data, T_key>::handle_non_resident(T_key cur_key, T_data (*get_page)(T_key)){
 
     move_from_LIR_to_HIR();
     
-    LIR_stack.push_front( get_page(cur_key) );
+    Cache_elem<T_data, T_key> tmp(get_page(cur_key), cur_key, elem_with_data);
+    LIR_stack.push_front(tmp);
     LIR_hash_t[cur_key] = LIR_stack.begin();
 }
 
-void LIRS_cache::handle_double_hit(Key_T cur_key){
+template <typename T_data, typename T_key>
+void LIRS_cache<T_data, T_key>::handle_double_hit(T_key cur_key){
 
     auto find_in_HIR = HIR_hash_t.find(cur_key);   //переместить найденный элемент из HIR в LIR
 
@@ -171,21 +182,23 @@ void LIRS_cache::handle_double_hit(Key_T cur_key){
     move_from_LIR_to_HIR();
 }
 
-void LIRS_cache::handle_resident(Key_T cur_key){
+template <typename T_data, typename T_key>
+void LIRS_cache<T_data, T_key>::handle_resident(T_key cur_key){
 
     auto HIR_res = HIR_hash_t.find(cur_key);
 
-    Cache_elem tmp(*(HIR_res->second));
+    Cache_elem<T_data, T_key> tmp(*(HIR_res->second));
 
     HIR_list.remove(*(HIR_res->second));
     HIR_list.push_front(tmp); //можно попробовать с помощью splice 
 
-    Cache_elem new_HIR_resident(cur_key, HRI_resident);
+    Cache_elem<T_data, T_key> new_HIR_resident(cur_key, HRI_resident);
 
     LIR_stack.push_front(new_HIR_resident);
 }
 
-bool LIRS_cache::update(Key_T cur_key, Cache_elem (*get_page)(Key_T)){
+template <typename T_data, typename T_key>
+bool LIRS_cache<T_data, T_key>::update(T_key cur_key, T_data (*get_page)(T_key)){
 
     auto find_in_LIR = LIR_hash_t.find(cur_key);
     auto find_in_HIR = HIR_hash_t.find(cur_key);
@@ -200,7 +213,7 @@ bool LIRS_cache::update(Key_T cur_key, Cache_elem (*get_page)(Key_T)){
             return false;
         } else{
 
-            Cache_elem tmp(*(find_in_LIR->second)); //можно попробовать с помощью splice 
+            Cache_elem<T_data, T_key> tmp(*(find_in_LIR->second)); //можно попробовать с помощью splice 
 
             LIR_stack.remove(*(find_in_LIR->second));
             LIR_stack.push_front(tmp);
@@ -225,7 +238,8 @@ bool LIRS_cache::update(Key_T cur_key, Cache_elem (*get_page)(Key_T)){
 
         if (LIR_stack.size() < LIR_size){
 
-            LIR_stack.push_front(get_page(cur_key));
+            Cache_elem<T_data, T_key> tmp(get_page(cur_key), cur_key, elem_with_data);
+            LIR_stack.push_front(tmp);
             LIR_hash_t[cur_key] = LIR_stack.begin();
         } else{
 
@@ -236,7 +250,7 @@ bool LIRS_cache::update(Key_T cur_key, Cache_elem (*get_page)(Key_T)){
         }
     } else{
 
-        Cache_elem new_HIR_elem(get_page(cur_key));
+        Cache_elem<T_data, T_key> new_HIR_elem(get_page(cur_key), cur_key, elem_with_data);
 
         check_HIR_bottom();
         
@@ -246,7 +260,7 @@ bool LIRS_cache::update(Key_T cur_key, Cache_elem (*get_page)(Key_T)){
         HIR_list.push_front(new_HIR_elem);
         HIR_hash_t[cur_key] = HIR_list.begin();
 
-        Cache_elem new_HIR_resident(cur_key, HRI_resident);
+        Cache_elem<T_data, T_key> new_HIR_resident(cur_key, HRI_resident);
 
         LIR_stack.push_front(new_HIR_resident);
         LIR_hash_t[cur_key] = LIR_stack.begin();
