@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <cassert>
+#include <iostream>
 
 #include <functional>
 #include <list>
@@ -94,6 +95,13 @@ public:
 template <typename T_data, typename T_key>
 Perfect_cache<T_data, T_key>::Perfect_cache(const std::vector<T_key>& new_data, int new_size): all_data(new_data){
 
+    if (new_size <= 0){
+
+        //std::cout << "Perfect cache size is now '1'\n";
+
+        new_size = 1;
+    }
+
     size = new_size;
 }
 
@@ -125,7 +133,7 @@ int Perfect_cache<T_data, T_key>::check_distance(int elem_number){
 }
 
 template <typename T_data, typename T_key>
-void Perfect_cache<T_data, T_key>::add_list_elem(T_data cur_elem_data, int cur_page_number, int cur_dist){//надо переделать get_page тк она должна возвращать только страницу
+void Perfect_cache<T_data, T_key>::add_list_elem(T_data cur_elem_data, int cur_page_number, int cur_dist){
 
     Perfect_cache_elem<T_data, T_key> new_elem(cur_elem_data, cur_page_number, cur_dist);
     cache_list.push_back(new_elem);

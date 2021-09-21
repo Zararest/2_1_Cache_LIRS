@@ -2,26 +2,28 @@
 #include "perfect_cache.inl"
 #include <random> 
 
-#define CASH_SIZE 300
-#define DATA_RANGE 2000
-#define NUM_OF_ITER 1000000
+
+#define COMPARE 1
+#define DATA_RANGE 200
+#define NUM_OF_ITER 500
 
 typedef long key;
 typedef int page;
+
 
 page get_page(key cur_key){
 
     return cur_key;
 }
 
-int main(){
+void compare_to_perfect(int cache_size){
 
     std::mt19937 mersenne(static_cast<unsigned int>(time(0))); 
 
-    LIRS_cache<page, key>  new_cache(CASH_SIZE);
+    LIRS_cache<page, key>  new_cache(cache_size);
     
     std::vector<key> keys_vector;
-    int counter = 0, cur_number = 0, perfect_counetr = 0; //на вход: размер кэша, количество элементов, элементы
+    int counter = 0, cur_number = 0, perfect_counetr = 0;
 
     for (int i = 0; i < NUM_OF_ITER; i++){
 
@@ -31,9 +33,37 @@ int main(){
         counter += new_cache.update(cur_number % DATA_RANGE, get_page);
     }
 
-    Perfect_cache<page, key> new_perfect_cache(keys_vector, CASH_SIZE);
+    Perfect_cache<page, key> new_perfect_cache(keys_vector, cache_size);
 
-    printf("number of hits: %i\n", counter);
-    printf("number of perfect hits: %i\n", new_perfect_cache.get_hit_count(get_page));//количество попаданий
+    std::cout << "number of hits: " << counter << '\n';
+    std::cout << "number of perfect hits: " << new_perfect_cache.get_hit_count(get_page) << '\n';
+}
+
+int main(){
+
+    long size_of_cache = 0;
+
+    std::cin >> size_of_cache;
+
+    if (COMPARE == 1){
+
+        compare_to_perfect(size_of_cache);
+    } else{
+
+        LIRS_cache<page, key>  new_cache(size_of_cache);
+
+        long number_of_elems = 0, counter = 0;
+        page elem;
+
+        std::cin >> number_of_elems;
+
+        for (long i = 0; i < number_of_elems; i++){
+
+            std::cin >> elem;
+            counter += new_cache.update(elem, get_page);
+        }
+
+        std::cout << counter << '\n';
+    }
     return 0;
 }
