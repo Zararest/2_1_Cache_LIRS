@@ -3,7 +3,7 @@
 #include <random> 
 
 
-#define COMPARE 1
+#define COMPARE 0
 #define DATA_RANGE 200
 #define NUM_OF_ITER 500
 
