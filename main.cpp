@@ -1,11 +1,13 @@
 #include "cache.inl"
 #include "perfect_cache.inl"
 #include <random> 
-
+#include <fstream>
+#include <ctime>
 
 #define COMPARE 0
+#define FROM_FILE 1
 #define DATA_RANGE 200
-#define NUM_OF_ITER 500
+#define NUM_OF_ITER 1000000
 
 typedef long key;
 typedef int page;
@@ -42,6 +44,7 @@ void compare_to_perfect(int cache_size){
 int main(){
 
     long size_of_cache = 0;
+    unsigned int start_time = 0, end_time = 0;
 
     std::cin >> size_of_cache;
 
@@ -51,19 +54,36 @@ int main(){
     } else{
 
         LIRS_cache<page, key>  new_cache(size_of_cache);
-
-        long number_of_elems = 0, counter = 0;
+        long number_of_elems = NUM_OF_ITER, counter = 0;
         page elem;
 
-        std::cin >> number_of_elems;
+        if (FROM_FILE == 1){
 
-        for (long i = 0; i < number_of_elems; i++){
+            std::ifstream data_file("../data.txt");
+            assert(data_file.is_open());
+        
+            start_time = clock();
+            while (!data_file.eof()){
 
-            std::cin >> elem;
-            counter += new_cache.update(elem, get_page);
+                data_file >> elem;
+            
+                counter += new_cache.update(elem, get_page); 
+            }
+            end_time = clock();
+
+            std::cout << counter << '\n';
+            std::cout << "time: " << (end_time - start_time) / CLOCKS_PER_SEC << '\n';
+        } else{
+
+            std::cin >> number_of_elems;
+
+            for (long i = 0; i < number_of_elems; i++){
+
+                std::cin >> elem;
+                counter += new_cache.update(elem, get_page);
+            }
+
+            std::cout << counter << '\n';
         }
-
-        std::cout << counter << '\n';
     }
-    return 0;
 }
