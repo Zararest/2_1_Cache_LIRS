@@ -5,7 +5,7 @@
 #include <ctime>
 
 #define COMPARE 0
-#define FROM_FILE 1
+#define FROM_FILE 0
 #define DATA_RANGE 200
 #define NUM_OF_ITER 1000000
 
