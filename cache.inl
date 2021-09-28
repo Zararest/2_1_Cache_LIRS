@@ -86,6 +86,8 @@ void Cache_elem<T_data, T_key>::change_type(int new_type){
 
 template <typename T_data, typename T_key> class LIRS_cache{
 
+protected:
+
     int LIR_size;
     int HIR_size;
 
@@ -143,7 +145,7 @@ bool LIRS_cache<T_data, T_key>::check_LIR_bottom(){
         LIR_stack.pop_back();
     }
 
-    assert(LIR_stack.back().get_type() == elem_with_data);
+    assert((LIR_stack.back().get_type() == elem_with_data) || (LIR_stack.size() == 0));
     return false;
 }
 
@@ -161,13 +163,6 @@ void LIRS_cache<T_data, T_key>::check_HIR_bottom(){
 template <typename T_data, typename T_key>
 void LIRS_cache<T_data, T_key>::move_from_LIR_to_HIR(){
 
-    if (HIR_list.size() > 0){
-
-        check_HIR_bottom();
-        HIR_hash_t.erase(HIR_list.back().get_key());
-        HIR_list.pop_back();
-    }
-
     LIR_hash_t.erase(LIR_stack.back().get_key());
     HIR_list.splice(HIR_list.begin(), LIR_stack, --LIR_stack.end());
 
@@ -180,6 +175,12 @@ template <typename T_data, typename T_key>
 void LIRS_cache<T_data, T_key>::handle_non_resident(T_key cur_key, T_data (*get_page)(T_key)){
 
     move_from_LIR_to_HIR();
+
+    assert(HIR_list.size() > 0);
+
+    check_HIR_bottom();
+    HIR_hash_t.erase(HIR_list.back().get_key());
+    HIR_list.pop_back();
     
     Cache_elem<T_data, T_key> tmp(get_page(cur_key), cur_key, elem_with_data);
     LIR_stack.push_front(tmp);
@@ -242,6 +243,8 @@ bool LIRS_cache<T_data, T_key>::update(T_key cur_key, T_data (*get_page)(T_key))
             if (find_in_LIR->second != LIR_stack.begin()){
 
                 LIR_stack.splice(LIR_stack.begin(), LIR_stack, find_in_LIR->second);
+
+                check_LIR_bottom();
             }
             return true;
         }
