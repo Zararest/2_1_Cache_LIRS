@@ -5,7 +5,7 @@
 #include <ctime>
 
 #define COMPARE 0
-#define FROM_FILE 0
+#define FROM_FILE 1
 #define DATA_RANGE 200
 #define NUM_OF_ITER 1000000
 
@@ -44,7 +44,7 @@ void compare_to_perfect(int cache_size){
 int main(){
 
     long size_of_cache = 0;
-    unsigned int start_time = 0, end_time = 0;
+    unsigned int start_time = 0, end_time = 0, sum = 0;
 
     std::cin >> size_of_cache;
 
@@ -59,20 +59,24 @@ int main(){
 
         if (FROM_FILE == 1){
 
-            std::ifstream data_file("../data.txt");
+            std::ifstream data_file("../015.dat");
             assert(data_file.is_open());
-        
-            start_time = clock();
+
             while (!data_file.eof()){
 
                 data_file >> elem;
-            
+                start_time = clock();
                 counter += new_cache.update(elem, get_page); 
-            }
-            end_time = clock();
+                end_time = clock();
 
+                sum += end_time - start_time;
+            }
+        
             std::cout << counter << '\n';
-            std::cout << "time: " << (end_time - start_time) / CLOCKS_PER_SEC << '\n';
+            std::cout << "time: " << sum / CLOCKS_PER_SEC<< '\n';
+            std::cout << "times: non_res(" << glob_sum_non_res << ") res(" << glob_sum_res;
+            std::cout << ") double(" << glob_sum_double<< ") other(" << glob_sum_other << ")\n";
+            std::cout << "in double hit[" << counter_doble_hit <<  "]: " << glob_double_hit << '\n';
         } else{
 
             std::cin >> number_of_elems;
