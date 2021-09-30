@@ -17,9 +17,6 @@ template <typename T_data, typename T_key>
 class LIRS_cache;
 
 
-unsigned int glob_start_time = 0, glob_end_time = 0, glob_start_2 = 0, glob_end_2 = 0, counter_doble_hit = 0;
-unsigned int glob_sum_non_res = 0, glob_sum_double = 0, glob_sum_res = 0, glob_sum_other = 0, glob_double_hit = 0, glob_find = 0;
-
 enum elem_types{
 
     HIR_resident = 1,
@@ -148,7 +145,6 @@ bool LIRS_cache<T_data, T_key>::check_LIR_bottom(){
         LIR_stack.pop_back();
     }
     
-
     assert((LIR_stack.back().get_type() == elem_with_data) || (LIR_stack.size() == 0));
     return false;
 }
@@ -194,8 +190,6 @@ void LIRS_cache<T_data, T_key>::handle_non_resident(T_key cur_key, T_data (*get_
 template <typename T_data, typename T_key>
 void LIRS_cache<T_data, T_key>::handle_double_hit(T_key cur_key){
 
-    glob_start_2 = clock();
-
     auto find_in_HIR = HIR_hash_t.find(cur_key); 
     auto find_in_LIR = LIR_hash_t.find(cur_key);
     assert(find_in_HIR->second != HIR_list.end());
@@ -207,10 +201,6 @@ void LIRS_cache<T_data, T_key>::handle_double_hit(T_key cur_key){
 
     LIR_stack.splice(LIR_stack.begin(), HIR_list, find_in_HIR->second);
     LIR_hash_t[cur_key] = LIR_stack.begin();
-
-    glob_end_2 = clock();
-
-    glob_double_hit += glob_end_2 - glob_start_2;
 
     move_from_LIR_to_HIR();
 }
@@ -234,12 +224,8 @@ void LIRS_cache<T_data, T_key>::handle_resident(T_key cur_key){
 template <typename T_data, typename T_key>
 bool LIRS_cache<T_data, T_key>::update(T_key cur_key, T_data (*get_page)(T_key)){ //надо splice заменить на конструктор копирования + удаление объекта 
 
-    glob_start_time = clock();
     auto find_in_LIR = LIR_hash_t.find(cur_key);
     auto find_in_HIR = HIR_hash_t.find(cur_key);
-    glob_end_time = clock();
-
-    glob_find = glob_end_time - glob_start_time;
     
     if ((find_in_LIR != LIR_hash_t.end()) && (find_in_HIR == HIR_hash_t.end())){
 
@@ -248,11 +234,7 @@ bool LIRS_cache<T_data, T_key>::update(T_key cur_key, T_data (*get_page)(T_key))
             LIR_hash_t.erase(cur_key);
             LIR_stack.erase(find_in_LIR->second);
 
-            glob_start_time = clock();
             handle_non_resident(cur_key, get_page);
-            glob_end_time = clock();
-
-            glob_sum_non_res += glob_end_time - glob_start_time;
 
             return false;
         } else{
@@ -269,26 +251,16 @@ bool LIRS_cache<T_data, T_key>::update(T_key cur_key, T_data (*get_page)(T_key))
 
     if ((find_in_LIR == LIR_hash_t.end()) && (find_in_HIR != HIR_hash_t.end())){ 
 
-        glob_start_time = clock();
         handle_resident(cur_key);
-        glob_end_time = clock();
-
-        glob_sum_res += glob_end_time - glob_start_time;
         return true;
     }
 
     if ((find_in_LIR != LIR_hash_t.end()) && (find_in_HIR != HIR_hash_t.end())){
 
-        counter_doble_hit++;
-        glob_start_time = clock();
         handle_double_hit(cur_key);
-        glob_end_time = clock();
-
-        glob_sum_double += glob_end_time - glob_start_time;
         return true;
     }
 
-    glob_start_time = clock();
     if ((HIR_list.size() < HIR_size) || (LIR_stack.size() < LIR_size)){
 
         if (LIR_stack.size() < LIR_size){
@@ -320,9 +292,6 @@ bool LIRS_cache<T_data, T_key>::update(T_key cur_key, T_data (*get_page)(T_key))
         LIR_stack.push_front(new_HIR_resident);
         LIR_hash_t[cur_key] = LIR_stack.begin();
     }
-    glob_end_time = clock();
-
-    glob_sum_other += glob_end_time- glob_start_time;
 
     return false;
 }
