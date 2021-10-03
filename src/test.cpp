@@ -5,9 +5,8 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include "cache.inl"
-#include "perfect_cache.inl"
-
+#include "headers/cache.hpp"
+#include "headers/perfect_cache.hpp"
 
 enum context_errors{
 

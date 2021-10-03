@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
@@ -6,6 +8,8 @@
 #include <functional>
 #include <list>
 #include <unordered_map>
+
+#define STACKS_SIZE_RATIO 2
 
 template <typename T_data, typename T_key>
 class Cache_elem;
@@ -40,16 +44,14 @@ public:
 
     Cache_elem(T_key elem_key, int elem_type);
 
-    ~Cache_elem(){};
-
     void change_type(int new_type);
 
-    T_key get_key(){
+    T_key get_key() const{
 
         return data_key;
     }
 
-    int get_type(){
+    int get_type() const{
 
         return type;
     }
@@ -72,6 +74,14 @@ Cache_elem<T_data, T_key>::Cache_elem(T_key elem_key, int elem_type): data_key(e
     type = elem_type;
 }
 
+void delete_data(const void* data_ptr, int data_size){
+
+    for (int i = 0; i < data_size; i++){
+
+        ((char*)data_ptr)[i] = 0;
+    }
+}
+
 template <typename T_data, typename T_key>
 void Cache_elem<T_data, T_key>::change_type(int new_type){
 
@@ -79,7 +89,7 @@ void Cache_elem<T_data, T_key>::change_type(int new_type){
 
     if ((new_type == HIR_resident) || (new_type == HIR_non_resident)){
         
-        //в этом месте мне надо освободить данные, поскольку они уже лежат в LIR
+        delete_data(&data, sizeof(T_data));
     }                     
 }
 
@@ -103,18 +113,20 @@ protected:
     void handle_resident(T_key cur_key);
 
     void handle_double_hit(T_key cur_key);
+    
+    void handle_miss(T_key cur_key, T_data(*get_page)(T_key));
+    
+    bool handle_if_cache_isnt_full(T_key cur_key, T_data(*get_page)(T_key));
 
     void move_from_LIR_to_HIR();
 
     bool check_LIR_bottom();
 
-    void check_HIR_bottom();
+    bool check_HIR_bottom();
 
 public:
 
     LIRS_cache(int size);
-
-    ~LIRS_cache(){};
 
     bool update(T_key cur_key, T_data(*get_page)(T_key)); 
 };
@@ -127,7 +139,7 @@ LIRS_cache<T_data, T_key>::LIRS_cache(int size){
         size = 2;
     }
 
-    HIR_size = size / 2;
+    HIR_size = size / STACKS_SIZE_RATIO;
     LIR_size = size - HIR_size;
 }
 
@@ -150,14 +162,18 @@ bool LIRS_cache<T_data, T_key>::check_LIR_bottom(){
 }
 
 template <typename T_data, typename T_key>
-void LIRS_cache<T_data, T_key>::check_HIR_bottom(){
+bool LIRS_cache<T_data, T_key>::check_HIR_bottom(){
 
     auto find_in_LIR = LIR_hash_t.find(HIR_list.back().get_key());
 
     if (find_in_LIR != LIR_hash_t.end()){
 
         find_in_LIR->second->change_type(HIR_non_resident);
+
+        return true;
     }
+
+    return false;
 }
 
 template <typename T_data, typename T_key>
@@ -222,7 +238,51 @@ void LIRS_cache<T_data, T_key>::handle_resident(T_key cur_key){
 }
 
 template <typename T_data, typename T_key>
-bool LIRS_cache<T_data, T_key>::update(T_key cur_key, T_data (*get_page)(T_key)){ //надо splice заменить на конструктор копирования + удаление объекта 
+void LIRS_cache<T_data, T_key>::handle_miss(T_key cur_key, T_data(*get_page)(T_key)){
+
+    Cache_elem<T_data, T_key> new_HIR_elem(get_page(cur_key), cur_key, elem_with_data);
+
+    check_HIR_bottom();
+
+    HIR_list.push_front(new_HIR_elem);
+    HIR_hash_t[cur_key] = HIR_list.begin();
+
+    HIR_hash_t.erase(HIR_list.back().get_key());
+    HIR_list.pop_back();
+
+    Cache_elem<T_data, T_key> new_HIR_resident(cur_key, HIR_resident);
+
+    LIR_stack.push_front(new_HIR_resident);
+    LIR_hash_t[cur_key] = LIR_stack.begin();
+}
+
+template <typename T_data, typename T_key>
+bool LIRS_cache<T_data, T_key>::handle_if_cache_isnt_full(T_key cur_key, T_data(*get_page)(T_key)){
+
+    if ((HIR_list.size() < HIR_size) || (LIR_stack.size() < LIR_size)){
+
+        if (LIR_stack.size() < LIR_size){
+
+            Cache_elem<T_data, T_key> tmp(get_page(cur_key), cur_key, elem_with_data);
+            LIR_stack.push_front(tmp);
+            LIR_hash_t[cur_key] = LIR_stack.begin();
+        } else{
+
+            LIR_hash_t.erase(LIR_stack.back().get_key());
+            HIR_list.splice(HIR_list.begin(), LIR_stack, --LIR_stack.end()); 
+
+            HIR_hash_t[HIR_list.begin()->get_key()] = HIR_list.begin();
+        }
+    } else{
+
+        return false;
+    }
+
+    return true;
+}
+
+template <typename T_data, typename T_key>
+bool LIRS_cache<T_data, T_key>::update(T_key cur_key, T_data (*get_page)(T_key)){
 
     auto find_in_LIR = LIR_hash_t.find(cur_key);
     auto find_in_HIR = HIR_hash_t.find(cur_key);
@@ -261,36 +321,9 @@ bool LIRS_cache<T_data, T_key>::update(T_key cur_key, T_data (*get_page)(T_key))
         return true;
     }
 
-    if ((HIR_list.size() < HIR_size) || (LIR_stack.size() < LIR_size)){
-
-        if (LIR_stack.size() < LIR_size){
-
-            Cache_elem<T_data, T_key> tmp(get_page(cur_key), cur_key, elem_with_data);
-            LIR_stack.push_front(tmp);
-            LIR_hash_t[cur_key] = LIR_stack.begin();
-        } else{
-
-            LIR_hash_t.erase(LIR_stack.back().get_key());
-            HIR_list.splice(HIR_list.begin(), LIR_stack, --LIR_stack.end()); 
-
-            HIR_hash_t[HIR_list.begin()->get_key()] = HIR_list.begin();
-        }
-    } else{
-
-        Cache_elem<T_data, T_key> new_HIR_elem(get_page(cur_key), cur_key, elem_with_data);
-
-        check_HIR_bottom();
-
-        HIR_list.push_front(new_HIR_elem);
-        HIR_hash_t[cur_key] = HIR_list.begin();
-
-        HIR_hash_t.erase(HIR_list.back().get_key());
-        HIR_list.pop_back();
-
-        Cache_elem<T_data, T_key> new_HIR_resident(cur_key, HIR_resident);
-
-        LIR_stack.push_front(new_HIR_resident);
-        LIR_hash_t[cur_key] = LIR_stack.begin();
+    if (handle_if_cache_isnt_full(cur_key, get_page) == false){
+        
+        handle_miss(cur_key, get_page);
     }
 
     return false;
